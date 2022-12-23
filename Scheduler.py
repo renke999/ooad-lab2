@@ -3,8 +3,13 @@ from Repair import REPAIR_DICT
 from Worker import WORKER_DICT
 
 
+import pymysql
+
 # TODO 创建sql数据库
 SCHEDULER_DICT = {}
+
+conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
+cursor = conn.cursor()
 
 
 class Scheduler:
@@ -13,33 +18,36 @@ class Scheduler:
     和报修、维修工、调度相关联
     """
 
-    scheduler_count = 0
-
     def __init__(self,
-                 repair=None,
-                 worker=None,
-                 schedule=None):
+                 id
+                 #repair=None,
+                 #worker=None,
+                 #schedule=None
+                 ):
         """
 
         :param repair: Repair类成员，报修
         :param worker: Worker类成员，调度员根据报修派遣的维修工
         :param schedule: Schedule类成员，调度员对应的调度
         """
-        self.repair = repair
-        self.worker = worker
-        self.schedule = schedule
+        self.id = id
+        # self.repair = repair
+        # self.worker = worker
+        # self.schedule = schedule
 
-        self.id = Scheduler.scheduler_count
-        SCHEDULER_DICT[self.id] = self
-        Scheduler.scheduler_count += 1
-
-
-    def handle_complaint(self):
-        input("调度员>>> 请对投诉记录进行回复：")
+        #SCHEDULER_DICT[self.id] = self
+        cursor.execute("use property")
+        sql = """insert p_scheduler(id) values (%s);""" % (self.id)
+        cursor.execute(sql)
+        conn.commit()
 
 
     def get_id(self):
         return self.id
+
+    def handle_complaint(self):
+        input("调度员>>> 请对投诉记录进行回复：")
+
 
 
     def set_complex_repair_and_remaining_step(self, repair, complex_repair, remaining_step):
@@ -59,40 +67,56 @@ class Scheduler:
         """
 
         # 1. 判断系统中是否存在调度中的报修，如果存在则不能调度（扩展流程要求只能有1个活跃的调度）
-        for repair in REPAIR_DICT.values():
-            if repair.is_doing_state():
-                print("调度员>>> 系统中存在调度中的报修，不能继续调度")
-                return
+        # for repair in REPAIR_DICT.values():
+        #     if repair.is_doing_state():
+        #         print("调度员>>> 系统中存在调度中的报修，不能继续调度")
+        #         return
+        cursor.execute("use property")
+        sql = """select * from p_repair where state_id = 1"""
+        cursor.execute(sql)
+        if cursor.fetchone():
+            print("调度员>>> 系统中存在调度中的报修，不能继续调度")
+            return
 
-        # TODO 在数据库中查询
         # 2. 在REPAIR_DICT（报修数据库）中选择一个时间最早且调度状态为未调度的repair
-        self.repair = None
-        for repair in REPAIR_DICT.values():
-            if repair.is_todo_state():
-                self.repair = repair
-
-        if not self.repair:
+        # self.repair = None
+        # for repair in REPAIR_DICT.values():
+        #     if repair.is_todo_state():
+        #         self.repair = repair
+        cursor.execute("use property")
+        sql = """select * from p_repair where state_id = 0"""
+        cursor.execute(sql)
+        row_repair = cursor.fetchone()
+        if not row_repair:
+        #if not self.repair:
             print("调度员>>> 系统中暂无待调度的报修")
             return
 
         # 3. 调用repair.get_fault()方法，得到故障类型
-        fault = self.repair.get_fault()
+        fault = row_repair[2]
 
         # TODO 在数据库中查询
         # 4. 在WORKER_DICT（维修工数据库）中选择一个和故障类型匹配且空闲的维修工，将这个报修分配给他
-        for worker in WORKER_DICT.values():
-            if worker.get_fault() == fault and worker.get_free():
-                self.worker = worker
-                break
-
+        cursor.execute("use property")
+        sql = """select * from p_worker where is_free = True and fault_id = %s""" % (fault)
+        cursor.execute(sql)
+        row_worker = cursor.fetchone()
+        # for worker in WORKER_DICT.values():
+        #     if worker.get_fault() == fault and worker.get_free():
+        #         self.worker = worker
+        #         break
+        if not row_worker:
+            print("无合适或空闲工人可调用")
+            return
         # 4. 将维修工的空状态设置为False
-        self.worker.set_free(False)
+        WORKER_DICT[row_worker[0]].set_free(False)
+        #self.worker.set_free(False)
 
         # 5. 创建一个schedule类（调度类）
-        self.schedule = Schedule(scheduler=self, worker=self.worker, repair=self.repair)
+        schedule = Schedule(scheduler=self, worker=WORKER_DICT[row_worker[0]], repair=REPAIR_DICT[row_repair[0]])
 
         # 6. 将维修任务分配给维修工，维修状态由待调度转为报修中，维修工处理任务并返回处理结果
-        self.schedule.start_schedule()
+        schedule.start_schedule()
 
         # 7. 更新数据库中调度员信息
-        SCHEDULER_DICT[self.id] = self
+        # SCHEDULER_DICT[self.id] = self

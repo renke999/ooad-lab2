@@ -8,22 +8,22 @@ from Manager import Manager
 
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
 
     # 0. 预定义一些故障类别
-    fault1 = Fault("电")
-    fault2 = Fault("水")
-    fault3 = Fault("燃")
+    fault1 = Fault("电", 1)
+    fault2 = Fault("水", 2)
+    fault3 = Fault("燃", 3)
 
 
     # 1. 创建业主，调度员，经理，处理电、水、燃故障的维修工
-    user = User(phone='p1', wechat='vx1')
-    scheduler = Scheduler()
+    user = User(id=1, phone='p1', wechat='vx1')
+    scheduler = Scheduler(1)
     manager = Manager()
 
-    worker1 = Worker(fault=fault1)
-    worker2 = Worker(fault=fault2)
-    worker3 = Worker(fault=fault3)
+    worker1 = Worker(id=1, fault=fault1)
+    worker2 = Worker(id=2, fault=fault2)
+    worker3 = Worker(id=3, fault=fault3)
 
     # 2. 业主发起两个"电"故障的报修，报修来源是微信
     repair1 = user.init_repair(fault=fault1, source="wechat")
@@ -53,5 +53,5 @@ if __name__=='__main__':
 
 
     # 查看内存数据库存储的内容，测试一下
-    # print(FEEDBACK_DICT[0].time_score)
-    # print(WORK_RECORD_DICT[0].work_content)
+    #print(FEEDBACK_DICT[0].time_score)
+    #print(WORK_RECORD_DICT[0].work_content)

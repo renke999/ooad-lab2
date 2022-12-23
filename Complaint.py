@@ -1,6 +1,13 @@
+# from User import User
+# from Repair import Repair
+
+Complaint_DICT = {}
 # TODO 创建一个新的sql投诉记录表
 # 投诉数据库
-Complaint_DICT = {}
+import pymysql
+# 评价记录数据库
+conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
+cursor = conn.cursor()
 
 
 class Complaint:
@@ -12,6 +19,7 @@ class Complaint:
     complaint_count = 0
 
     def __init__(self,
+                 id,
                  repair,
                  user,
                  done=False,
@@ -24,16 +32,17 @@ class Complaint:
         :param done: bool，是否解决
         :param repair_content: 用户的投诉
         """
-
+        self.id = id
         self.repair = repair
         self.user = user
         self.done = done
         self.repair_content = repair_content
-
-        # 评价的id，用于查内存数据库，用sql则不需要此变量
-        self.id = Complaint.complaint_count
         Complaint_DICT[self.id] = self
-        Complaint.complaint_count += 1
+        cursor.execute("use property")
+        sql = """insert p_complaint(id, repair_id, user_id, done, repair_content) values (%s, %s, %s, %s, '%s');""" % (
+        self.id, self.repair.get_id(), self.user.get_id(),  self.done, self.repair_content)
+        cursor.execute(sql)
+        conn.commit()
 
     def is_done(self):
         return self.done
@@ -43,3 +52,10 @@ class Complaint:
 
     def set_done(self, done):
         self.done = done
+        cursor.execute("use property")
+        cursor.execute("update p_complaint set done=%s where id=%s" % (self.done, self.id))
+        conn.commit()
+
+    def get_id(self):
+        return self.id
+

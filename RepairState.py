@@ -11,6 +11,9 @@ class RepairState:
         """
         pass
 
+    def get_id(self):
+        pass
+
 
 class TodoState(RepairState):
     """
@@ -25,6 +28,9 @@ class TodoState(RepairState):
         :return:
         """
         repair.set_state(DoingState())
+
+    def get_id(self):
+        return 0
 
 
 class DoingState(RepairState):
@@ -42,6 +48,9 @@ class DoingState(RepairState):
         """
         repair.set_state(DoneState())
 
+    def get_id(self):
+        return 1
+
 
 class DoneState(RepairState):
     """
@@ -56,3 +65,6 @@ class DoneState(RepairState):
         :return:None
         """
         pass
+
+    def get_id(self):
+        return 2

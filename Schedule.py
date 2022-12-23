@@ -1,7 +1,10 @@
 # TODO 创建一个新的sql调度记录表
 # 调度记录数据库
 Schedule_DICT = {}
+import pymysql
 
+conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
+cursor = conn.cursor()
 
 class Schedule:
     """
@@ -18,16 +21,23 @@ class Schedule:
         :param worker: Worker类成员，该调度对应的维修工
         :param repair: Repair类成员，该调度对应的报修任务
         """
-
+        self.id = Schedule.schedule_count
         self.scheduler = scheduler
         self.worker = worker
         self.repair = repair
         # 将维修工对应的调度设为当前调度
         self.worker.set_schedule(self)
-
-        self.id = Schedule.schedule_count
         Schedule_DICT[self.id] = self
+
+        cursor.execute("use property")
+        sql = """insert p_schedule(id, schedule_id, worker_id, repair_id) values (%s, %s, %s, %s)""" % (self.id, self.scheduler.get_id(), self.worker.get_id(), self.repair.get_id())
+        cursor.execute(sql)
+        conn.commit()
+        
         Schedule.schedule_count += 1
+    
+    def get_id(self):
+        return self.id
 
     def get_repair(self):
         return self.repair

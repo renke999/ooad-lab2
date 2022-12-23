@@ -7,6 +7,12 @@ from datetime import datetime
 # 建在内存中的报修数据库
 REPAIR_DICT = {}
 
+# 数据库，存放所有维修信息
+import pymysql
+#from pymysql.converters import escape_string
+
+conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
+cursor = conn.cursor()
 
 class Repair:
     """
@@ -14,12 +20,10 @@ class Repair:
     """
     # lazy import for type hint
 
-
-
     repair_count = 0
 
     def __init__(self,
-                 time: datetime,
+                 time: str,
                  fault,
                  user,
                  source: str,
@@ -44,10 +48,18 @@ class Repair:
         self.state = state
         self.complex_repair = complex_repair
         self.remaining_step = remaining_step
-
         self.id = Repair.repair_count
         REPAIR_DICT[self.id] = self
         Repair.repair_count += 1
+        cursor.execute("use property")
+        sql = """insert p_repair(id,repair_time,fault_id,user_id,source,state_id,complex_repair,remaining_step) 
+        values (%s, '%s', %s, %s, '%s', %s, %s, %s)""" % (self.id, str(self.time)[0:18],
+                                                       self.fault.get_id(), self.user.get_id(),
+                                                       self.source, self.state.get_id(),
+                                                       self.complex_repair, self.remaining_step)
+        cursor.execute(sql)
+        conn.commit()
+
 
     def set_complex_repair_and_remaining_step(self, complex_repair, remaining_step):
         """
@@ -64,7 +76,8 @@ class Repair:
         生成一个评价记录给用户
         :return:
         """
-        self.feedback = Feedback(self, self.user)
+        self.feedback = Feedback(id=Feedback.feedback_count, repair= self, user = self.user)
+        Feedback.feedback_count += 1
         # 通知用户进行评价
         self.user.make_feedback(self.feedback)
 
@@ -122,6 +135,11 @@ class Repair:
         # 更新内存中的数据库
         # TODO 更新sql
         REPAIR_DICT[self.id] = self
+        cursor.execute("use property")
+        sql = """update p_repair set fault_id = %s where id=%s""" % (self.fault.get_id(), self.id)
+        # 更新：fault("XXX", 1)
+        cursor.execute(sql)
+        conn.commit() 
 
     def switch_state(self):
         """
@@ -132,6 +150,10 @@ class Repair:
         # 更新内存中的数据库
         # TODO 更新sql
         REPAIR_DICT[self.id] = self
+        cursor.execute("use property")
+        sql = """update p_repair set state_id = %s where id=%s""" % (self.state.get_id(), self.id)
+        cursor.execute(sql)
+        conn.commit() 
 
     def set_state(self, repair_state):
         """
@@ -143,12 +165,20 @@ class Repair:
         # 更新内存中的数据库
         # TODO 更新sql
         REPAIR_DICT[self.id] = self
+        cursor.execute("use property")
+        sql = """update p_repair set state_id = %s where id=%s""" % (self.state.get_id(), self.id)
+        cursor.execute(sql)
+        conn.commit() 
 
     def reset_state(self):
         self.state = TodoState()
         # 更新内存中的数据库
         # TODO 更新sql
         REPAIR_DICT[self.id] = self
+        cursor.execute("use property")
+        sql = """update p_repair set state_id = %s where id=%s""" % (self.state.get_id(), self.id)
+        cursor.execute(sql)
+        conn.commit()
 
     def get_id(self):
         """

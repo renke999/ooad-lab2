@@ -8,39 +8,53 @@ import time
 # 内存中的维修记录数据库，后续应当通过数据库处理
 WORKER_DICT = {}
 
+import pymysql
+
+conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
+cursor = conn.cursor()
+
 
 class Worker:
     """
     维修工
     和调度、故障、维修记录相关联
     """
-    worker_count = 0
 
     def __init__(self,
+                 id,
                  fault,
                  schedule = None,
                  free: bool = True):
 
         """
-
-        :param fault: Fault类成员，维修工对应的故障类型
-        :param schedule: Schedule类成员，维修工对应的调度
+        :param id: Worker类成员的id,为维修员数据表的主键
+        :param fault_id: Fault类成员的id,维修工对应的故障类型
+        :param schedule_id: Schedule类成员的id,维修工对应的调度
         :param free: 维修工的空闲状态
         """
+        self.id = id
         self.fault = fault
+        self.fault_id = fault.get_id()
         self.schedule = schedule
-        self.free = free
-
-        self.id = Worker.worker_count
+        if self.schedule:
+            self.schedule_id = self.schedule.get_id()
+        else:
+            self.schedule_id = -1   # -1表示还未被调度
+        self.is_free = free
         WORKER_DICT[self.id] = self
-        Worker.worker_count += 1
+
+        cursor.execute("use property")
+        sql = """insert p_worker(id,fault_id,schedule_id,is_free) values (%s, %s, %s, %s);""" % (self.id, self.fault_id, self.schedule_id, self.is_free)
+        cursor.execute(sql)
+        conn.commit()
+
 
     def get_free(self):
         """
         getter
         :return: 维修工当前的空闲状态
         """
-        return self.free
+        return self.is_free
 
     def set_free(self, free):
         """
@@ -48,10 +62,13 @@ class Worker:
         :param free: 维修工的空闲状态
         :return:
         """
-        self.free = free
+        self.is_free = free
         # 更新数据库中维修工的状态
-        # TODO 更新sql数据库中维修工状态
-        WORKER_DICT[self.id] = self
+        # TODO 更新sql数据库中维修工状态 ok
+        cursor.execute("use property")
+        cursor.execute("update p_worker set is_free=%s where id=%s" % (self.is_free, self.id))
+        conn.commit()
+
 
     def get_fault(self):
         """
@@ -63,13 +80,16 @@ class Worker:
     def set_schedule(self, schedule):
         """
         setter 设置维修工对应的调度
-        :param schedule: Schedule类成员，
+        :param schedule: Schedule类成员,
         :return:
         """
         self.schedule = schedule
-        # 更新内存中的数据库
-        # TODO 更新sql
+        self.schedule_id = schedule.get_id()
         WORKER_DICT[self.id] = self
+        # 更新内存中的数据库
+        # TODO 更新sql OK
+        cursor.execute("update p_worker set schedule_id=%s where id=%s" % (self.schedule_id, self.id))
+        conn.commit()
 
     def get_id(self):
         return self.id
@@ -97,8 +117,8 @@ class Worker:
         time.sleep(1)
         end_time = datetime.now()
         work_content = input('维修工>>> 请输入本次维修内容：')
-        work_record = WorkRecord(self)
-        work_record.set_record(start_time=start_time, end_time=end_time, work_content=work_content)
+        work_record = WorkRecord(worker=self)
+        work_record.set_record(start_time=str(start_time)[0:18], end_time=str(end_time)[0:18], work_content=work_content)
 
         # case 2. 如果是个复杂的报修任务，则需要多次完成。如果没有完成，则将状态由报修中重置为待调度
         if not self.schedule.is_completed():
