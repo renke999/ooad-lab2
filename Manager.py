@@ -2,10 +2,8 @@ import Schedule
 import Complaint
 
 # TODO 在数据库中完成查找
-import pymysql
+from Singleton import Singleton
 
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
 
 # 假设只有1个manager,故不新建表
 class Manager:
@@ -13,15 +11,15 @@ class Manager:
         pass
 
     def handle_complaint(self):
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """select * from p_complaint"""
-        cursor.execute(sql)
-        allComplaint_db_result = cursor.fetchall()
+        singleton.cursor.execute(sql)
+        allComplaint_db_result = singleton.cursor.fetchall()
 
-        cursor.execute("use property")
+        singleton.cursor.execute("use property")
         sql = """select * from p_schedule"""
-        cursor.execute(sql)
-        allSchedule_db_result = cursor.fetchall()
+        singleton.cursor.execute(sql)
+        allSchedule_db_result = singleton.cursor.fetchall()
         for db_complaint in allComplaint_db_result:
             # 1. 遍历所有投诉记录，找到没有处理的解决
             if not db_complaint[3]:
@@ -43,7 +41,7 @@ class Manager:
                         # scheduler.handle_complaint()
                         # 5. 经理关闭投诉
                         # complaint.set_done(True)
-                        cursor.execute("update p_complaint set done=%s where id=%s" % (True,db_complaint[0]))
+                        singleton.cursor.execute("update p_complaint set done=%s where id=%s" % (True,db_complaint[0]))
                         print("经理>>> 投诉处理成功，关闭投诉")
                         print("==================================================\n")
-        conn.commit()
+        singleton.conn.commit()

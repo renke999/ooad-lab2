@@ -2,17 +2,11 @@ from RepairState import RepairState, TodoState, DoingState, DoneState
 from Feedback import Feedback
 
 from datetime import datetime
-
+from Singleton import Singleton
 
 # 建在内存中的报修数据库
-REPAIR_DICT = {}
+# REPAIR_DICT = {}
 
-# 数据库，存放所有维修信息
-import pymysql
-#from pymysql.converters import escape_string
-
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
 
 class Repair:
     """
@@ -22,14 +16,8 @@ class Repair:
 
     repair_count = 0
 
-    def __init__(self,
-                 time: str,
-                 fault,
-                 user,
-                 source: str,
-                 state: RepairState = TodoState(),
-                 complex_repair: bool = False,
-                 remaining_step: int = 1):
+    def __init__(self, time: str, fault, user, source: str, state: RepairState = TodoState(),
+                 complex_repair: bool = False, remaining_step: int = 1):
         """
 
         :param time: 报修时间
@@ -49,17 +37,16 @@ class Repair:
         self.complex_repair = complex_repair
         self.remaining_step = remaining_step
         self.id = Repair.repair_count
-        REPAIR_DICT[self.id] = self
+        # REPAIR_DICT[self.id] = self
         Repair.repair_count += 1
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_repair(id,repair_time,fault_id,user_id,source,state_id,complex_repair,remaining_step) 
         values (%s, '%s', %s, %s, '%s', %s, %s, %s)""" % (self.id, str(self.time)[0:18],
                                                        self.fault.get_id(), self.user.get_id(),
                                                        self.source, self.state.get_id(),
                                                        self.complex_repair, self.remaining_step)
-        cursor.execute(sql)
-        conn.commit()
-
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def set_complex_repair_and_remaining_step(self, complex_repair, remaining_step):
         """
@@ -81,7 +68,6 @@ class Repair:
         # 通知用户进行评价
         self.user.make_feedback(self.feedback)
 
-
     def is_completed(self):
         """
         维修工人完成了一次维修，判断是否是一个需要多次完成的维修任务（拓展流程），如果是的话，是否已经完成？
@@ -100,7 +86,6 @@ class Repair:
         :return: 当前报修状态
         """
         return self.state
-
 
     def is_todo_state(self):
         """
@@ -134,12 +119,12 @@ class Repair:
         self.fault = fault
         # 更新内存中的数据库
         # TODO 更新sql
-        REPAIR_DICT[self.id] = self
-        cursor.execute("use property")
+        # REPAIR_DICT[self.id] = self
+        singleton = Singleton.getInstance()
         sql = """update p_repair set fault_id = %s where id=%s""" % (self.fault.get_id(), self.id)
         # 更新：fault("XXX", 1)
-        cursor.execute(sql)
-        conn.commit() 
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def switch_state(self):
         """
@@ -149,11 +134,11 @@ class Repair:
         self.state.switch_state(self)
         # 更新内存中的数据库
         # TODO 更新sql
-        REPAIR_DICT[self.id] = self
-        cursor.execute("use property")
+        # REPAIR_DICT[self.id] = self
+        singleton = Singleton.getInstance()
         sql = """update p_repair set state_id = %s where id=%s""" % (self.state.get_id(), self.id)
-        cursor.execute(sql)
-        conn.commit() 
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def set_state(self, repair_state):
         """
@@ -164,21 +149,21 @@ class Repair:
         self.state = repair_state
         # 更新内存中的数据库
         # TODO 更新sql
-        REPAIR_DICT[self.id] = self
-        cursor.execute("use property")
+        # REPAIR_DICT[self.id] = self
+        singleton = Singleton.getInstance()
         sql = """update p_repair set state_id = %s where id=%s""" % (self.state.get_id(), self.id)
-        cursor.execute(sql)
-        conn.commit() 
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def reset_state(self):
         self.state = TodoState()
         # 更新内存中的数据库
         # TODO 更新sql
-        REPAIR_DICT[self.id] = self
-        cursor.execute("use property")
+        # REPAIR_DICT[self.id] = self
+        singleton = Singleton.getInstance()
         sql = """update p_repair set state_id = %s where id=%s""" % (self.state.get_id(), self.id)
-        cursor.execute(sql)
-        conn.commit()
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def get_id(self):
         """

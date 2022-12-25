@@ -1,8 +1,5 @@
 # TODO 创建一个新的sql评价记录表
-import pymysql
-# 评价记录数据库
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
+from Singleton import Singleton
 
 
 class Feedback:
@@ -35,13 +32,11 @@ class Feedback:
         self.time_score = time_score
         self.attitude_score = attitude_score
         self.satisfy_score = satisfy_score
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_feedback(id, repair_id, user_id, time_score, attitude_score, satisfy_score) values (%s, %s, %s, %s, %s, %s);""" % (
         self.id, self.repair_id, self.user_id, self.time_score, self.attitude_score, self.satisfy_score)
-        cursor.execute(sql)
-        conn.commit()
-
-
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def set_feedback(self, time_score, attitude_score, satisfy_score):
         self.time_score = time_score
@@ -51,10 +46,10 @@ class Feedback:
         # TODO 更新数据库中的一条信息
         # 更新FEEDBACK_DICT
         #FEEDBACK_DICT[self.id] = self
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """update p_feedback set time_score = %s, attitude_score = %s, satisfy_score = %s where id = %s""" % (time_score, attitude_score, satisfy_score, self.id)
-        cursor.execute(sql)
-        conn.commit()
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
 
 

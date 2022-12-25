@@ -4,8 +4,8 @@ from datetime import datetime
 # 初始化一个内存中的WORK_RECORD_DICT数据库
 import pymysql
 
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
+from Singleton import Singleton
+
 
 class WorkRecord:
     """
@@ -35,11 +35,11 @@ class WorkRecord:
         self.work_content = work_content
         WorkRecord.work_record_count += 1
         # TODO 用sql加入到数据库里 OK
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_workrecord(id, worker_id, start_time, end_time, work_content) values (%s, %s, '%s', '%s', 
         '%s')""" % (self.id, self.worker_id, self.start_time, self.end_time, self.work_content)
-        cursor.execute(sql)
-        conn.commit()
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def set_record(self,
                    start_time: str,
@@ -49,9 +49,9 @@ class WorkRecord:
         self.end_time = end_time
         self.work_content = work_content
         # TODO 更新sql状态 OK
-        cursor.execute("use property")
-        cursor.execute("""update p_workrecord set start_time='%s',end_time='%s',work_content='%s' where id=%s""" % (self.start_time, self.end_time, self.work_content, self.id))
-        conn.commit()
+        singleton = Singleton.getInstance()
+        singleton.cursor.execute("""update p_workrecord set start_time='%s',end_time='%s',work_content='%s' where id=%s""" % (self.start_time, self.end_time, self.work_content, self.id))
+        singleton.conn.commit()
     
     def get_id(self):
         return self.id

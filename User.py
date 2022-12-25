@@ -3,12 +3,7 @@ from Complaint import Complaint
 
 from datetime import datetime
 
-
-# 数据库，存放所有业主信息
-import pymysql
-
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
+from Singleton import Singleton
 
 
 class User:
@@ -34,10 +29,10 @@ class User:
 
         # TODO 实现数据库 ok
         # 用户的id
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_user(id,phone,wechat) values (%s, '%s', '%s');""" % (self.id, self.phone, self.wechat)
-        cursor.execute(sql)
-        conn.commit()
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def init_repair(self, fault, source: str):
         """
@@ -71,7 +66,6 @@ class User:
         print("用户>>> 评价已完成")
         print('*********************************************\n')
         feedback.set_feedback(time_score, attitude_score, satisfy_score)
-
 
     def make_complaint(self, complaint_repair):
         complaint_content = input("用户>>> 输入投诉内容：")

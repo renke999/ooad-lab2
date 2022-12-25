@@ -7,6 +7,11 @@ class Singleton:
     def __init__(self):
         self.conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
         self.cursor = self.conn.cursor()
+        self.cursor.execute("use property")
+
+    def __del__(self):
+        self.cursor.close()
+        self.conn.close()
 
     @staticmethod
     def getInstance():
@@ -26,7 +31,6 @@ if __name__ == "__main__":
     instance.conn.commit()
 
     # 创建业主数据表
-    instance.cursor.execute("use property")
     sql = """
     create table p_user(
         id int primary key,
@@ -36,7 +40,6 @@ if __name__ == "__main__":
     """
     instance.cursor.execute(sql)
     instance.conn.commit()
-
 
     # 新建维修工数据表
     sql = """
@@ -143,6 +146,3 @@ if __name__ == "__main__":
     """
     instance.cursor.execute(sql)
     instance.conn.commit()
-
-    instance.cursor.close()
-    instance.conn.close()

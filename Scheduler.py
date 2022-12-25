@@ -1,15 +1,13 @@
 from Schedule import Schedule
-from Repair import REPAIR_DICT
-from Worker import WORKER_DICT
+# from Repair import REPAIR_DICT
+# from Worker import WORKER_DICT
 
 
-import pymysql
+from Singleton import Singleton
 
-# TODO 创建sql数据库
-SCHEDULER_DICT = {}
-
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
+# # TODO 创建sql数据库
+# SCHEDULER_DICT = {}
+#
 
 
 class Scheduler:
@@ -18,12 +16,7 @@ class Scheduler:
     和报修、维修工、调度相关联
     """
 
-    def __init__(self,
-                 id
-                 #repair=None,
-                 #worker=None,
-                 #schedule=None
-                 ):
+    def __init__(self, id):  # repair=None, worker=None, schedule=None
         """
 
         :param repair: Repair类成员，报修
@@ -36,19 +29,16 @@ class Scheduler:
         # self.schedule = schedule
 
         #SCHEDULER_DICT[self.id] = self
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_scheduler(id) values (%s);""" % (self.id)
-        cursor.execute(sql)
-        conn.commit()
-
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
     def get_id(self):
         return self.id
 
     def handle_complaint(self):
         input("调度员>>> 请对投诉记录进行回复：")
-
-
 
     def set_complex_repair_and_remaining_step(self, repair, complex_repair, remaining_step):
         """
@@ -71,10 +61,10 @@ class Scheduler:
         #     if repair.is_doing_state():
         #         print("调度员>>> 系统中存在调度中的报修，不能继续调度")
         #         return
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """select * from p_repair where state_id = 1"""
-        cursor.execute(sql)
-        if cursor.fetchone():
+        singleton.cursor.execute(sql)
+        if singleton.cursor.fetchone():
             print("调度员>>> 系统中存在调度中的报修，不能继续调度")
             return
 
@@ -83,10 +73,9 @@ class Scheduler:
         # for repair in REPAIR_DICT.values():
         #     if repair.is_todo_state():
         #         self.repair = repair
-        cursor.execute("use property")
         sql = """select * from p_repair where state_id = 0"""
-        cursor.execute(sql)
-        row_repair = cursor.fetchone()
+        singleton.cursor.execute(sql)
+        row_repair = singleton.cursor.fetchone()
         if not row_repair:
         #if not self.repair:
             print("调度员>>> 系统中暂无待调度的报修")
@@ -97,10 +86,9 @@ class Scheduler:
 
         # TODO 在数据库中查询
         # 4. 在WORKER_DICT（维修工数据库）中选择一个和故障类型匹配且空闲的维修工，将这个报修分配给他
-        cursor.execute("use property")
         sql = """select * from p_worker where is_free = True and fault_id = %s""" % (fault)
-        cursor.execute(sql)
-        row_worker = cursor.fetchone()
+        singleton.cursor.execute(sql)
+        row_worker = singleton.cursor.fetchone()
         # for worker in WORKER_DICT.values():
         #     if worker.get_fault() == fault and worker.get_free():
         #         self.worker = worker

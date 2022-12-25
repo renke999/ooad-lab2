@@ -3,15 +3,7 @@ from Fault import Fault
 from datetime import datetime
 import time
 
-
-# TODO
-# 内存中的维修记录数据库，后续应当通过数据库处理
-WORKER_DICT = {}
-
-import pymysql
-
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
+from Singleton import Singleton
 
 
 class Worker:
@@ -41,12 +33,12 @@ class Worker:
         else:
             self.schedule_id = -1   # -1表示还未被调度
         self.is_free = free
-        WORKER_DICT[self.id] = self
+        # WORKER_DICT[self.id] = self
 
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_worker(id,fault_id,schedule_id,is_free) values (%s, %s, %s, %s);""" % (self.id, self.fault_id, self.schedule_id, self.is_free)
-        cursor.execute(sql)
-        conn.commit()
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
 
 
     def get_free(self):
@@ -65,10 +57,9 @@ class Worker:
         self.is_free = free
         # 更新数据库中维修工的状态
         # TODO 更新sql数据库中维修工状态 ok
-        cursor.execute("use property")
-        cursor.execute("update p_worker set is_free=%s where id=%s" % (self.is_free, self.id))
-        conn.commit()
-
+        singleton = Singleton.getInstance()
+        singleton.cursor.execute("update p_worker set is_free=%s where id=%s" % (self.is_free, self.id))
+        singleton.conn.commit()
 
     def get_fault(self):
         """
@@ -85,19 +76,18 @@ class Worker:
         """
         self.schedule = schedule
         self.schedule_id = schedule.get_id()
-        WORKER_DICT[self.id] = self
+        # WORKER_DICT[self.id] = self
         # 更新内存中的数据库
         # TODO 更新sql OK
-        cursor.execute("update p_worker set schedule_id=%s where id=%s" % (self.schedule_id, self.id))
-        conn.commit()
+        singleton = Singleton.getInstance()
+        singleton.cursor.execute("update p_worker set schedule_id=%s where id=%s" % (self.schedule_id, self.id))
+        singleton.conn.commit()
 
     def get_id(self):
         return self.id
 
-
     def handle_complaint(self):
         input("维修工>>> 请对投诉记录进行回复：")
-
 
     def work(self):
         """

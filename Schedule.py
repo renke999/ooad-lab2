@@ -1,10 +1,8 @@
 # TODO 创建一个新的sql调度记录表
 # 调度记录数据库
-Schedule_DICT = {}
-import pymysql
+# Schedule_DICT = {}
+from Singleton import Singleton
 
-conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='2000825lxr', charset='utf8')
-cursor = conn.cursor()
 
 class Schedule:
     """
@@ -27,12 +25,12 @@ class Schedule:
         self.repair = repair
         # 将维修工对应的调度设为当前调度
         self.worker.set_schedule(self)
-        Schedule_DICT[self.id] = self
+        # Schedule_DICT[self.id] = self
 
-        cursor.execute("use property")
+        singleton = Singleton.getInstance()
         sql = """insert p_schedule(id, schedule_id, worker_id, repair_id) values (%s, %s, %s, %s)""" % (self.id, self.scheduler.get_id(), self.worker.get_id(), self.repair.get_id())
-        cursor.execute(sql)
-        conn.commit()
+        singleton.cursor.execute(sql)
+        singleton.conn.commit()
         
         Schedule.schedule_count += 1
     
@@ -70,10 +68,8 @@ class Schedule:
         """
         return self.repair.is_completed()
 
-
     def get_remaining_step(self):
         return self.repair.get_remaining_step()
-
 
     def start_schedule(self):
         """
