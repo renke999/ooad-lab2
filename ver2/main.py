@@ -26,13 +26,13 @@ if __name__ == '__main__':
     worker3 = Worker(id=3, fault=fault3)
 
     # 2. 业主发起两个"电"故障的报修，报修来源是微信
-    repair1 = user.init_repair(fault=fault1, source="wechat")
+    repair1 = user.ask_for_repair(fault=fault1, source="wechat")
 
     # 3. 调度员在合适的时间进行调度，将报修分配给维修工，维修工完成后通知业主完成了，业主给出评价
     scheduler.start_schedule()
 
     # 4. 业主发起"水"故障的报修，报修来源是手机
-    repair2 = user.init_repair(fault=fault1, source="wechat")
+    repair2 = user.ask_for_repair(fault=fault1, source="wechat")
 
     # 5. 调度员认为这是个复杂的，需要调度3步的任务
     scheduler.set_complex_repair_and_remaining_step(repair2, complex_repair=True, remaining_step=3)

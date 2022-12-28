@@ -1,77 +1,55 @@
 from Repair import Repair
-from Complaint import Complaint
-
-from datetime import datetime
 
 from Singleton import Singleton
+from util import get_fault_and_content
 
 
 class User:
-    """
-    业主类
-    """
 
-    def __init__(self,
-                 id: int,
-                 phone: str = None,
-                 wechat: str = None,
-                 ):
-        """
+    def __init__(self, **kwargs):
 
-        :param phone: 用户电话
-        :param wechat: 用户微信
-        """
-        self.id = id
-        self.phone = phone
-        self.wechat = wechat
-        self.repair_list = []
-        self.complaint_list = []
+        self.user_id = kwargs['user_id'] if 'user_id' in kwargs else None
+        self.phone = kwargs['phone'] if 'phone' in kwargs else None
+        self.wechat = kwargs['wechat'] if 'wechat' in kwargs else None
 
-        # TODO 实现数据库 ok
-        # 用户的id
-        singleton = Singleton.getInstance()
-        sql = """insert p_user(id,phone,wechat) values (%s, '%s', '%s');""" % (self.id, self.phone, self.wechat)
-        singleton.cursor.execute(sql)
-        singleton.conn.commit()
+        self.instance = Singleton.getInstance()
 
-    def init_repair(self, fault, source: str):
-        """
+    def ask_for_repair(self):
+        fault_name, repair_content = get_fault_and_content()
+        source = ['phone', 'wechat'][int(input("电话报修请按'1'，微信报修请按'2'：\n>>>")) - 1]
+        repair = Repair(fault_name=fault_name, user_id=self.user_id, source=source, repair_content=repair_content)
+        repair.commit_repair()
 
-        :param fault: Fault类,用户报修所对应的故障
-        :param source: 用户的报修来源
-        :return:
-        """
-        time = datetime.now()
-        repair = Repair(time=time, fault=fault, user=self, source=source)
-        self.repair_list.append(repair)
+    def ask_for_feedback(self):
+        print(self.user_id, 'feedback')
 
-        # TODO 更新sql数据库 ok
-        # 更新报修的用户id
-        # cursor.execute("insert p_repair(user_id) values (%s)" % self.id)
-        # conn.commit()
-        return repair
+    def ask_for_complaint(self):
+        print(self.user_id, 'complaint')
 
-    def make_feedback(self, feedback):
-        """
 
-        :param feedback: Feedback类,维修工完成后,调度类会传一个评价记录表给用户
-        :return:
-        """
+if __name__ == '__main__':
 
-        print('\n*********************************************')
-        print("用户>>> 您的维修已完成，请对服务进行评价")
-        time_score = input("用户>>> 请输入响应及时度：")
-        attitude_score = input("用户>>> 请输入维修工态度：")
-        satisfy_score = input("用户>>> 请输入满意度：")
-        print("用户>>> 评价已完成")
-        print('*********************************************\n')
-        feedback.set_feedback(time_score, attitude_score, satisfy_score)
+    singleton = Singleton.getInstance()
+    print("用户列表：")
 
-    def make_complaint(self, complaint_repair):
-        complaint_content = input("用户>>> 输入投诉内容：")
-        complaint = Complaint(id=Complaint.complaint_count, repair=complaint_repair, user=self, done=False, repair_content=complaint_content)
-        Complaint.complaint_count += 1
+    user_lst = singleton.get_dict_data_select("""select * from user;""")
+    print("".join(['\t' + str(dct) + '\n' for dct in user_lst]))
 
-    def get_id(self):
-        return self.id
+    user = None
+    user_id = int(input("请根据'user_id'选择用户：\n>>>"))
+    while user is None:
+        try:
+            user = list(filter(lambda x: x['user_id'] == user_id, user_lst))[0]
+        except IndexError:
+            user_id = int(input("输入'user_id'错误，请重新输入：\n>>>"))
+    user = User(**user)
 
+    user_control_lst = ['user.ask_for_repair', 'user.ask_for_feedback', 'user.ask_for_complaint', ]
+
+    idx = int(input("报修请按'1'，反馈请按'2'，投诉请按'3'，退出请按'4'：\n>>>"))
+    while idx != 4:
+        try:
+            eval(user_control_lst[idx - 1])()
+        except (NameError, IndexError):
+            print('请输入正确的指令编号！')
+        idx = int(input("报修请按'1'，反馈请按'2'，投诉请按'3'，退出请按'4'：\n>>>"))

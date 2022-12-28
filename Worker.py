@@ -1,123 +1,111 @@
-from WorkRecord import WorkRecord
-from Fault import Fault
-from datetime import datetime
-import time
+import datetime
 
 from Singleton import Singleton
+from util import get_fault_and_content
+
+from Repair import Repair
+from Schedule import Schedule
+from WorkRecord import WorkRecord
 
 
 class Worker:
-    """
-    维修工
-    和调度、故障、维修记录相关联
-    """
 
-    def __init__(self,
-                 id,
-                 fault,
-                 schedule = None,
-                 free: bool = True):
+    def __init__(self, **kwargs):
+        self.worker_id = kwargs['worker_id'] if 'worker_id' in kwargs else None
+        self.fault_name = kwargs['fault_name'] if 'fault_name' in kwargs else None
+        self.schedule_id = kwargs['schedule_id'] if 'schedule_id' in kwargs else None
+        self.is_free = kwargs['is_free'] if 'is_free' in kwargs else None
+        self.instance = Singleton.getInstance()
 
-        """
-        :param id: Worker类成员的id,为维修员数据表的主键
-        :param fault_id: Fault类成员的id,维修工对应的故障类型
-        :param schedule_id: Schedule类成员的id,维修工对应的调度
-        :param free: 维修工的空闲状态
-        """
-        self.id = id
-        self.fault = fault
-        self.fault_id = fault.get_id()
-        self.schedule = schedule
-        if self.schedule:
-            self.schedule_id = self.schedule.get_id()
+    def handle_schedule(self):
+        print("您的待完成报修：")
+        if self.is_free is True or self.schedule_id is None:
+            print("\t空")
+            return
+        repair_schedule = self.instance.get_dict_data_select("""select * from repair join schedule on repair.repair_id = schedule.repair_id where schedule_id = %d;""" % self.schedule_id)[0]
+        print('\t', repair_schedule)
+        repair = Repair(**repair_schedule)
+        schedule = Schedule(**repair_schedule)
+        is_right = int(input("维修开始，请首先确认报修类型是否正确\n正确报修请按'1'，错误报修请按'0'：\n>>>"))
+        if is_right == 0:
+            self.handle_schedule_wrong(schedule, repair)
+        elif repair.complex_repair:
+            self.handle_schedule_complex(schedule, repair)
         else:
-            self.schedule_id = -1   # -1表示还未被调度
-        self.is_free = free
-        # WORKER_DICT[self.id] = self
+            self.handle_schedule_simple(schedule, repair)
 
-        singleton = Singleton.getInstance()
-        sql = """insert p_worker(id,fault_id,schedule_id,is_free) values (%s, %s, %s, %s);""" % (self.id, self.fault_id, self.schedule_id, self.is_free)
-        singleton.cursor.execute(sql)
-        singleton.conn.commit()
+    def handle_schedule_wrong(self, schedule: Schedule, repair: Repair):
+        schedule.wrong_schedule()
+        repair.switch_state(repair_state='待调度')
+        fault_name, repair_content = get_fault_and_content()
+        repair.change_fault(fault_name=fault_name, repair_content=repair_content)
+        self.free_worker()
 
+    def handle_schedule_simple(self, schedule: Schedule, repair: Repair):
+        self.do_schedule(schedule)
+        repair.switch_state(repair_state='已调度')
+        self.free_worker()
+        print("辛苦了，该维修工作已完成\n")
 
-    def get_free(self):
-        """
-        getter
-        :return: 维修工当前的空闲状态
-        """
-        return self.is_free
+    def handle_schedule_complex(self, schedule: Schedule, repair: Repair):
+        self.do_schedule(schedule)
+        work_count = self.instance.get_dict_data_select("""select count(*) from work_record where schedule_id = %d;""" % self.schedule_id)[0]['count(*)']
+        if work_count < repair.remaining_step:
+            print("辛苦了，完成进度 %d / %d\n" % (work_count, repair.remaining_step))
+        else:
+            repair.switch_state(repair_state='已调度')
+            self.free_worker()
+            print("辛苦了，该维修工作已完成\n")
 
-    def set_free(self, free):
-        """
-        setter 设置维修工的空闲状态
-        :param free: 维修工的空闲状态
-        :return:
-        """
-        self.is_free = free
-        # 更新数据库中维修工的状态
-        # TODO 更新sql数据库中维修工状态 ok
-        singleton = Singleton.getInstance()
-        singleton.cursor.execute("update p_worker set is_free=%s where id=%s" % (self.is_free, self.id))
-        singleton.conn.commit()
+    def free_worker(self):
+        sql = """update worker set schedule_id = null, is_free = true where worker_id = %d;""" % self.worker_id
+        self.instance.cursor.execute(sql)
+        self.instance.conn.commit()
+        self.schedule_id = None
+        self.is_free = True
 
-    def get_fault(self):
-        """
-        getter
-        :return: 维修工能处理的故障类型
-        """
-        return self.fault
+    def busy_worker(self, schedule_id):
+        sql = """update worker set schedule_id = %d, is_free = False where worker_id = %d""" % (schedule_id, self.worker_id)
+        self.instance.cursor.execute(sql)
+        self.instance.conn.commit()
+        self.schedule_id = schedule_id
+        self.is_free = False
 
-    def set_schedule(self, schedule):
-        """
-        setter 设置维修工对应的调度
-        :param schedule: Schedule类成员,
-        :return:
-        """
-        self.schedule = schedule
-        self.schedule_id = schedule.get_id()
-        # WORKER_DICT[self.id] = self
-        # 更新内存中的数据库
-        # TODO 更新sql OK
-        singleton = Singleton.getInstance()
-        singleton.cursor.execute("update p_worker set schedule_id=%s where id=%s" % (self.schedule_id, self.id))
-        singleton.conn.commit()
+    def do_schedule(self, schedule: Schedule):
+        start_time = datetime.datetime.now()
+        work_content = input("开始工作，请输入工作内容\n>>>")
+        work_record = WorkRecord(schedule_id=schedule.schedule_id, start_time=start_time, work_content=work_content)
+        work_record.commit_work_record()
 
-    def get_id(self):
-        return self.id
-
-    def handle_complaint(self):
-        input("维修工>>> 请对投诉记录进行回复：")
-
-    def work(self):
-        """
-        :return:
-        """
-        # case 1. 工种不匹配，修改报修的故障类型，并将状态由报修中重置为待调度（拓展流程1）
-        if not self.schedule.is_fault_matched():
-            # TODO 这里随便修改一个故障类型，实际上应该由维修工在数据库中选择一个，可以不用实现这个TODO，不重要
-            actual_fault = self.fault
-            self.schedule.set_repair_fault(actual_fault)
-            print("维修工>>> 维修工工种不匹配，重新调度")
-            self.schedule.reset_schedule()
-            return
-
-        # 模拟维修工维修过程，记录维修的开始时间和结束时间等信息，加入维修记录数据库中
-        start_time = datetime.now()
-        time.sleep(1)
-        end_time = datetime.now()
-        work_content = input('维修工>>> 请输入本次维修内容：')
-        work_record = WorkRecord(worker=self)
-        work_record.set_record(start_time=str(start_time)[0:18], end_time=str(end_time)[0:18], work_content=work_content)
-
-        # case 2. 如果是个复杂的报修任务，则需要多次完成。如果没有完成，则将状态由报修中重置为待调度
-        if not self.schedule.is_completed():
-            print("维修工>>> 任务需要多次调度，剩余{}次调度，重新调度".format(self.schedule.get_remaining_step()))
-            self.schedule.reset_schedule()
-            return
-
-        # case 3. 成功处理完报修，将状态由报修中转为已报修，并生成评价记录表给用户填写
-        self.schedule.end_schedule()
+    def handle_feedback(self):
+        print('handle_feedback')
+        pass
 
 
+if __name__ == '__main__':
 
+    singleton = Singleton.getInstance()
+    print("维修工列表：")
+
+    worker_lst = singleton.get_dict_data_select("""select * from worker;""")
+    print("".join(['\t' + str(dct) + '\n' for dct in worker_lst]))
+
+    worker = None
+    worker_id = int(input("请根据'worker_id'选择调度员：\n>>>"))
+    while worker is None:
+        try:
+            worker = list(filter(lambda x: x['worker_id'] == worker_id, worker_lst))[0]
+        except IndexError:
+            worker_id = int(input("输入'worker_id'错误，请重新输入：\n>>>"))
+
+    worker = Worker(**worker)
+
+    worker_control_lst = ['worker.handle_schedule', 'worker.handle_feedback', ]
+
+    idx = int(input("处理报修请按'1'，处理反馈请按'2'，退出请按'3'：\n>>>"))
+    while idx != 3:
+        try:
+            eval(worker_control_lst[idx - 1])()
+        except (NameError, IndexError):
+            print('请输入正确的指令编号！')
+        idx = int(input("处理报修请按'1'，处理反馈请按'2'，退出请按'3'：\n>>>"))

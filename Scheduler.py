@@ -1,110 +1,75 @@
-from Schedule import Schedule
-# from Repair import REPAIR_DICT
-# from Worker import WORKER_DICT
-
 
 from Singleton import Singleton
-
-# # TODO 创建sql数据库
-# SCHEDULER_DICT = {}
-#
+from Schedule import Schedule
+from Repair import Repair
+from Worker import Worker
 
 
 class Scheduler:
-    """
-    调度员
-    和报修、维修工、调度相关联
-    """
 
-    def __init__(self, id):  # repair=None, worker=None, schedule=None
-        """
+    def __init__(self, **kwargs):
 
-        :param repair: Repair类成员，报修
-        :param worker: Worker类成员，调度员根据报修派遣的维修工
-        :param schedule: Schedule类成员，调度员对应的调度
-        """
-        self.id = id
-        # self.repair = repair
-        # self.worker = worker
-        # self.schedule = schedule
+        self.scheduler_id = kwargs['scheduler_id'] if 'scheduler_id' in kwargs else None
+        self.instance = Singleton.getInstance()
 
-        #SCHEDULER_DICT[self.id] = self
-        singleton = Singleton.getInstance()
-        sql = """insert p_scheduler(id) values (%s);""" % (self.id)
-        singleton.cursor.execute(sql)
-        singleton.conn.commit()
+    def handle_schedule(self):
+        print("待调度报修列表：")
+        repair_lst = self.instance.get_dict_data_select("""select * from repair where repair_state = '待调度';""")
+        print("\n".join(['\t' + str(dct) for dct in repair_lst]) if len(repair_lst) else "\t空")
+        repair_id = int(input("请根据'repair_id'选择任务，退出请输入'0'：\n>>>"))
+        while repair_id != 0:
+            try:
+                repair = list(filter(lambda x: x['repair_id'] == repair_id, repair_lst))[0]
+                repair = Repair(**repair)
+                self.handle_schedule_worker(repair)
+            except IndexError:
+                repair_id = int(input("输入'repair_id'错误，请重新输入：\n>>>"))
+                continue
+            repair_id = int(input("请根据'repair_id'选择任务，退出请输入'0'：\n>>>"))
 
-    def get_id(self):
-        return self.id
+    def handle_schedule_worker(self, repair: Repair):
+        print("可调度维修工列表：")
+        worker_lst = self.instance.get_dict_data_select("""select * from worker where is_free = true and fault_name = '%s';""" % repair.fault_name)
+        print("\n".join(['\t' + str(dct) for dct in worker_lst]) if len(worker_lst) else "\t空")
+        worker_id = int(input("请根据'worker_id'选择维修工，输入其他数字自动退出：\n>>>"))
+        worker = list(filter(lambda x: x['worker_id'] == worker_id, worker_lst))
+        if worker:
+            worker = Worker(**worker[0])
+            schedule = Schedule(scheduler_id=self.scheduler_id, worker_id=worker_id, repair_id=repair.repair_id)
+            schedule_id = schedule.commit_schedule()
+            repair.switch_state(repair_state='调度中')
+            worker.busy_worker(schedule_id=schedule_id)
+        else:
+            print("输入'worker_id'错误，已自动回退，请重新选择报修调度\n")
 
-    def handle_complaint(self):
-        input("调度员>>> 请对投诉记录进行回复：")
+    def handle_feedback(self):
+        pass
 
-    def set_complex_repair_and_remaining_step(self, repair, complex_repair, remaining_step):
-        """
-        调度员可能认为这是个复杂任务，设置复杂任务为true以及需要处理的步骤
-        :param repair: 报修记录
-        :param complex_repair: 是否是个复杂任务
-        :param remaining_step: 如果是个复杂任务，剩余需要调度的次数
-        :return:
-        """
-        repair.set_complex_repair_and_remaining_step(complex_repair, remaining_step)
 
-    def start_schedule(self):
-        """
+if __name__ == '__main__':
 
-        :return:
-        """
+    singleton = Singleton.getInstance()
+    print("调度员列表：")
 
-        # 1. 判断系统中是否存在调度中的报修，如果存在则不能调度（扩展流程要求只能有1个活跃的调度）
-        # for repair in REPAIR_DICT.values():
-        #     if repair.is_doing_state():
-        #         print("调度员>>> 系统中存在调度中的报修，不能继续调度")
-        #         return
-        singleton = Singleton.getInstance()
-        sql = """select * from p_repair where state_id = 1"""
-        singleton.cursor.execute(sql)
-        if singleton.cursor.fetchone():
-            print("调度员>>> 系统中存在调度中的报修，不能继续调度")
-            return
+    scheduler_lst = singleton.get_dict_data_select("""select * from scheduler;""")
+    print("".join(['\t' + str(dct) + '\n' for dct in scheduler_lst]))
 
-        # 2. 在REPAIR_DICT（报修数据库）中选择一个时间最早且调度状态为未调度的repair
-        # self.repair = None
-        # for repair in REPAIR_DICT.values():
-        #     if repair.is_todo_state():
-        #         self.repair = repair
-        sql = """select * from p_repair where state_id = 0"""
-        singleton.cursor.execute(sql)
-        row_repair = singleton.cursor.fetchone()
-        if not row_repair:
-        #if not self.repair:
-            print("调度员>>> 系统中暂无待调度的报修")
-            return
+    scheduler = None
+    scheduler_id = int(input("请根据'scheduler_id'选择调度员：\n>>>"))
+    while scheduler is None:
+        try:
+            scheduler = list(filter(lambda x: x['scheduler_id'] == scheduler_id, scheduler_lst))[0]
+        except IndexError:
+            scheduler_id = int(input("输入'scheduler_id'错误，请重新输入：\n>>>"))
 
-        # 3. 调用repair.get_fault()方法，得到故障类型
-        fault = row_repair[2]
+    scheduler = Scheduler(scheduler_id=scheduler['scheduler_id'])
 
-        # TODO 在数据库中查询
-        # 4. 在WORKER_DICT（维修工数据库）中选择一个和故障类型匹配且空闲的维修工，将这个报修分配给他
-        sql = """select * from p_worker where is_free = True and fault_id = %s""" % (fault)
-        singleton.cursor.execute(sql)
-        row_worker = singleton.cursor.fetchone()
-        # for worker in WORKER_DICT.values():
-        #     if worker.get_fault() == fault and worker.get_free():
-        #         self.worker = worker
-        #         break
-        if not row_worker:
-            print("无合适或空闲工人可调用")
-            return
-        # 4. 将维修工的空状态设置为False
-        WORKER_DICT[row_worker[0]].set_free(False)
-        #self.worker.set_free(False)
+    scheduler_control_lst = ['scheduler.handle_schedule', 'scheduler.handle_feedback', ]
 
-        # 5. 创建一个schedule类（调度类）
-        schedule = Schedule(scheduler=self, worker=WORKER_DICT[row_worker[0]], repair=REPAIR_DICT[row_repair[0]])
-
-        # 6. 将维修任务分配给维修工，维修状态由待调度转为报修中，维修工处理任务并返回处理结果
-        schedule.start_schedule()
-
-        # 7. 更新数据库中调度员信息
-        # SCHEDULER_DICT[self.id] = self
+    idx = int(input("处理报修请按'1'，处理反馈请按'2'，退出请按'3'：\n>>>"))
+    while idx != 3:
+        try:
+            eval(scheduler_control_lst[idx - 1])()
+        except (NameError, IndexError):
+            print('请输入正确的指令编号！')
+        idx = int(input("处理报修请按'1'，处理反馈请按'2'，退出请按'3'：\n>>>"))
