@@ -1,5 +1,9 @@
 from Singleton import Singleton
 
+from WorkRecord import WorkRecord
+
+import datetime
+
 
 class Schedule:
 
@@ -26,3 +30,10 @@ class Schedule:
         self.instance.cursor.execute(sql)
         self.instance.conn.commit()
         self.is_right = False
+
+    def right_schedule(self):
+        start_time = datetime.datetime.now()
+        work_content = input("维修工%d开始工作，请输入工作内容\n>>>" % self.worker_id)
+        work_record = WorkRecord(schedule_id=self.schedule_id, start_time=start_time, work_content=work_content)
+        work_record.commit_work_record()
+

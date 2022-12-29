@@ -23,15 +23,16 @@ class Repair:
         self.state = eval(state_dct[self.repair_state])()
 
     def commit_repair(self):
-        sql = """insert repair(repair_time, repair_state, fault_name, user_id, source, repair_content) 
-        values ('%s', '%s', '%s', %s, '%s', '%s');""" % (str(self.repair_time), self.repair_state, self.fault_name, self.user_id, self.source, self.repair_content)
+        sql = """insert repair(repair_time, repair_state, fault_name, user_id, source, repair_content, complex_repair, remaining_step) 
+        values ('%s', '%s', '%s', %s, '%s', '%s', %s, %d);""" % (str(self.repair_time), self.repair_state, self.fault_name, self.user_id,
+                                                                 self.source, self.repair_content, self.complex_repair, self.remaining_step)
         self.instance.cursor.execute(sql)
         self.instance.conn.commit()
         self.repair_id = self.instance.cursor.lastrowid
         return self.repair_id
 
     def switch_state(self, repair_state='待调度'):
-        self.state = self.state.switch_state(self.repair_id, repair_state)
+        self.state = self.state.switch_state(self, repair_state)
         self.repair_state = self.state.get_repair_state()
 
     def change_fault(self, fault_name, repair_content):
@@ -47,7 +48,7 @@ class RepairState:
     def __init__(self):
         self.instance = Singleton.get_instance()
 
-    def switch_state(self, repair_id, repair_state):
+    def switch_state(self, repair, repair_state):
         pass
 
     def get_repair_state(self):
@@ -56,11 +57,9 @@ class RepairState:
 
 class TodoState(RepairState):
 
-    def switch_state(self, repair_id, repair_state='调度中'):
-        is_complex = int(input("设为复杂任务请按'1'，设为简单任务请按'2'：\n>>>")) == 1
-        remaining_step = 0 if not is_complex else int(input("请设置复杂任务的工时个数：\n>>>"))
+    def switch_state(self, repair, repair_state='调度中'):
         sql = """update repair set repair_state = '%s', complex_repair = %s, remaining_step = %d where repair_id = %d""" \
-              % ('调度中', is_complex, remaining_step, repair_id)
+              % ('调度中', repair.complex_repair, repair.remaining_step, repair.repair_id)
         self.instance.cursor.execute(sql)
         self.instance.conn.commit()
         return DoingState()
@@ -71,8 +70,8 @@ class TodoState(RepairState):
 
 class DoingState(RepairState):
 
-    def switch_state(self, repair_id, repair_state):
-        sql = """update repair set repair_state = '%s' where repair_id = %d""" % (repair_state, repair_id)
+    def switch_state(self, repair, repair_state):
+        sql = """update repair set repair_state = '%s' where repair_id = %d""" % (repair_state, repair.repair_id)
         self.instance.cursor.execute(sql)
         self.instance.conn.commit()
         return eval(state_dct[repair_state])()
@@ -83,7 +82,7 @@ class DoingState(RepairState):
 
 class DoneState(RepairState):
 
-    def switch_state(self, repair_id, repair_state):
+    def switch_state(self, repair, repair_state):
         pass
 
     def get_repair_state(self):

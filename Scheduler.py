@@ -35,6 +35,8 @@ class Scheduler:
         worker = list(filter(lambda x: x['worker_id'] == worker_id, worker_lst))
         if worker:
             worker = Worker(**worker[0])
+            repair.is_complex = int(input("设为复杂任务请按'1'，设为简单任务请按'2'：\n>>>")) == 1
+            repair.remaining_step = 0 if not repair.is_complex else int(input("请设置复杂任务的工时个数：\n>>>"))
             self.handle_schedule_backend(repair=repair, worker=worker)
         else:
             print("输入'worker_id'错误，已自动回退，请重新选择报修调度\n")
@@ -44,6 +46,7 @@ class Scheduler:
         schedule_id = schedule.commit_schedule()
         repair.switch_state(repair_state='调度中')
         worker.busy_worker(schedule_id=schedule_id)
+        return schedule_id
 
     def handle_complaint_frontend(self):
         print("待回复投诉列表：")

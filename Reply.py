@@ -15,7 +15,7 @@ class Reply:
 
     def commit_reply(self):
         sql = """insert reply(complaint_id, scheduler_id, worker_id, reply_content) 
-        values (%s, %d, null, '%s');""" % (self.complaint_id, self.scheduler_id, self.reply_content)
+        values (%s, %d, null, null);""" % (self.complaint_id, self.scheduler_id)
         self.instance.cursor.execute(sql)
         self.instance.conn.commit()
         self.reply_id = self.instance.cursor.lastrowid

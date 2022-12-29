@@ -5,7 +5,6 @@ from util import get_fault_and_content
 
 from Repair import Repair
 from Schedule import Schedule
-from WorkRecord import WorkRecord
 from Reply import Reply
 
 
@@ -29,27 +28,27 @@ class Worker:
         schedule = Schedule(**repair_schedule)
         is_right = int(input("维修开始，请首先确认报修类型是否正确\n正确报修请按'1'，错误报修请按'0'：\n>>>"))
         if is_right == 0:
-            self.handle_schedule_wrong(schedule, repair)
+            schedule.wrong_schedule()
+            self.handle_schedule_wrong(repair)
         elif repair.complex_repair:
-            self.handle_schedule_complex(schedule, repair)
+            schedule.right_schedule()
+            self.handle_schedule_complex(repair)
         else:
-            self.handle_schedule_simple(schedule, repair)
+            schedule.right_schedule()
+            self.handle_schedule_simple(repair)
 
-    def handle_schedule_wrong(self, schedule: Schedule, repair: Repair):
-        schedule.wrong_schedule()
+    def handle_schedule_wrong(self, repair: Repair):
         repair.switch_state(repair_state='待调度')
         fault_name, repair_content = get_fault_and_content()
         repair.change_fault(fault_name=fault_name, repair_content=repair_content)
         self.free_worker()
 
-    def handle_schedule_simple(self, schedule: Schedule, repair: Repair):
-        self.do_schedule(schedule)
+    def handle_schedule_simple(self, repair: Repair):
         repair.switch_state(repair_state='已调度')
         self.free_worker()
         print("辛苦了，该维修工作已完成\n")
 
-    def handle_schedule_complex(self, schedule: Schedule, repair: Repair):
-        self.do_schedule(schedule)
+    def handle_schedule_complex(self, repair: Repair):
         work_count = self.instance.get_dict_data_select("""select count(*) from work_record where schedule_id = %d;""" % self.schedule_id)[0]['count(*)']
         if work_count < repair.remaining_step:
             print("辛苦了，完成进度 %d / %d\n" % (work_count, repair.remaining_step))
@@ -71,12 +70,6 @@ class Worker:
         self.instance.conn.commit()
         self.schedule_id = schedule_id
         self.is_free = False
-
-    def do_schedule(self, schedule: Schedule):
-        start_time = datetime.datetime.now()
-        work_content = input("维修工%d开始工作，请输入工作内容\n>>>" % self.worker_id)
-        work_record = WorkRecord(schedule_id=schedule.schedule_id, start_time=start_time, work_content=work_content)
-        work_record.commit_work_record()
 
     def handle_complaint_frontend(self):
         print("待回复投诉列表：")
