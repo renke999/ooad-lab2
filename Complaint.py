@@ -10,7 +10,7 @@ class Complaint:
         self.complaint_content = kwargs['complaint_content'] if 'complaint_content' in kwargs else None
         self.is_done = kwargs['is_done'] if 'is_done' in kwargs else None
 
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
     def commit_complaint(self):
         sql = """insert complaint(repair_id, complaint_content, is_done) 

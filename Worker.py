@@ -16,9 +16,9 @@ class Worker:
         self.fault_name = kwargs['fault_name'] if 'fault_name' in kwargs else None
         self.schedule_id = kwargs['schedule_id'] if 'schedule_id' in kwargs else None
         self.is_free = kwargs['is_free'] if 'is_free' in kwargs else None
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
-    def handle_schedule(self):
+    def handle_schedule_frontend(self):
         print("您的待完成报修：")
         if self.is_free is True or self.schedule_id is None:
             print("\t空")
@@ -74,31 +74,29 @@ class Worker:
 
     def do_schedule(self, schedule: Schedule):
         start_time = datetime.datetime.now()
-        work_content = input("开始工作，请输入工作内容\n>>>")
+        work_content = input("维修工%d开始工作，请输入工作内容\n>>>" % self.worker_id)
         work_record = WorkRecord(schedule_id=schedule.schedule_id, start_time=start_time, work_content=work_content)
         work_record.commit_work_record()
 
-    def handle_complaint(self):
+    def handle_complaint_frontend(self):
         print("待回复投诉列表：")
         reply_lst = self.instance.get_dict_data_select(
             """select * from reply where reply_content is null and worker_id = %d;""" % self.worker_id)
         print("\n".join(['\t' + str(dct) for dct in reply_lst]) if len(reply_lst) else "\t空")
         complaint_id = int(input("请根据'complaint_id'选择，退出请输入'0'：\n>>>"))
-        while complaint_id != 0:
+        if complaint_id != 0:
             try:
                 reply = list(filter(lambda x: x['complaint_id'] == complaint_id, reply_lst))[0]
                 reply = Reply(**reply)
                 reply_content = input("开始回复，请输入回复内容\n>>>")
                 reply.update_reply(reply_content=reply_content)
             except IndexError:
-                print("输入'complaint_id'错误，请重新输入：\n")
-                continue
-            complaint_id = int(input("请根据'complaint_id'选择任务，退出请输入'0'：\n>>>"))
+                print("输入'complaint_id'错误，请重新发起投诉处理请求：\n")
 
 
 if __name__ == '__main__':
 
-    singleton = Singleton.getInstance()
+    singleton = Singleton.get_instance()
     print("维修工列表：")
 
     worker_lst = singleton.get_dict_data_select("""select * from worker;""")
@@ -114,7 +112,7 @@ if __name__ == '__main__':
 
     worker = Worker(**worker)
 
-    worker_control_lst = ['worker.handle_schedule', 'worker.handle_complaint', ]
+    worker_control_lst = ['worker.handle_schedule_frontend', 'worker.handle_complaint_frontend', ]
 
     idx = int(input("处理报修请按'1'，处理投诉请按'2'，退出请按'3'：\n>>>"))
     while idx != 3:

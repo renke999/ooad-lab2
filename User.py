@@ -1,7 +1,8 @@
 from Singleton import Singleton
 from util import get_fault_and_content
 
-from Repair import Repair, select_one_repair
+from Repair import Repair
+from Feedback import Feedback
 from Complaint import Complaint
 
 
@@ -13,7 +14,7 @@ class User:
         self.phone = kwargs['phone'] if 'phone' in kwargs else None
         self.wechat = kwargs['wechat'] if 'wechat' in kwargs else None
 
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
     def ask_for_repair(self):
         fault_name, repair_content = get_fault_and_content()
@@ -22,14 +23,26 @@ class User:
         repair.commit_repair()
 
     def ask_for_feedback(self):
-        print(self.user_id, 'feedback')
+        print("已调度报修列表：")
+        repair_lst = self.instance.get_dict_data_select("""select * from repair where repair_state = '已调度' and user_id = %d;""" % self.user_id)
+        print("\n".join(['\t' + str(dct) for dct in repair_lst]) if len(repair_lst) else "\t空")
+        repair_id = int(input("请根据'repair_id'选择，退出请输入'0'：\n>>>"))
+        if repair_id != 0:
+            try:
+                time_score = int(input("请输入响应及时度，1-5分：\n>>>"))
+                attitude_score = int(input("请输入服务态度评分，1-5分：\n>>>"))
+                satisfy_score = int(input("请输入对结果的满意度，1-5分：\n>>>"))
+                feedback = Feedback(repair_id=repair_id, time_score=time_score, attitude_score=attitude_score, satisfy_score=satisfy_score)
+                feedback.commit_feedback()
+            except IndexError:
+                print("输入'repair_id'错误，请重新发起投诉请求：\n")
 
     def ask_for_complaint(self):
         print("已调度报修列表：")
         repair_lst = self.instance.get_dict_data_select("""select * from repair where repair_state = '已调度' and user_id = %d;""" % self.user_id)
         print("\n".join(['\t' + str(dct) for dct in repair_lst]) if len(repair_lst) else "\t空")
         repair_id = int(input("请根据'repair_id'选择投诉，退出请输入'0'：\n>>>"))
-        while repair_id != 0:
+        if repair_id != 0:
             try:
                 repair = list(filter(lambda x: x['repair_id'] == repair_id, repair_lst))[0]
                 repair = Repair(**repair)
@@ -37,9 +50,7 @@ class User:
                 complaint = Complaint(repair_id=repair.repair_id, complaint_content=complaint_content, is_done=False)
                 complaint.commit_complaint()
             except IndexError:
-                print("输入'repair_id'错误，请重新输入：\n")
-                continue
-            repair_id = int(input("请根据'repair_id'选择投诉，退出请输入'0'：\n>>>"))
+                print("输入'repair_id'错误，请重新发起投诉请求：\n")
 
     def browse_reply(self):
         print("已回复投诉列表：")
@@ -48,21 +59,18 @@ class User:
             where is_done = true and user_id = %d;""" % self.user_id)
         print("\n".join(['\t' + str(dct) for dct in complaint_lst]) if len(complaint_lst) else "\t空")
         complaint_id = int(input("请根据'complaint_id'选择投诉，退出请输入'0'：\n>>>"))
-        while complaint_id != 0:
+        if complaint_id != 0:
             try:
                 complaint = list(filter(lambda x: x['complaint_id'] == complaint_id, complaint_lst))[0]
-                reply_lst = self.instance.get_dict_data_select(
-                    """select * from reply where complaint_id = %d;""" % complaint_id)
+                reply_lst = self.instance.get_dict_data_select("""select * from reply where complaint_id = %d;""" % complaint_id)
                 print("\n".join(['\t' + str(dct) for dct in reply_lst]) if len(reply_lst) else "\t空")
             except IndexError:
-                print("输入'complaint_id'错误，请重新输入：\n")
-                continue
-            complaint_id = int(input("请根据'complaint_id'选择投诉，退出请输入'0'：\n>>>"))
+                print("输入'complaint_id'错误，请重新发起浏览请求：\n")
 
 
 if __name__ == '__main__':
 
-    singleton = Singleton.getInstance()
+    singleton = Singleton.get_instance()
     print("用户列表：")
 
     user_lst = singleton.get_dict_data_select("""select * from user;""")

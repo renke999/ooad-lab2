@@ -12,7 +12,7 @@ class WorkRecord:
         self.end_time = kwargs['end_time'] if 'end_time' in kwargs else None
         self.work_content = kwargs['work_content'] if 'work_content' in kwargs else None
 
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
     def commit_work_record(self, end_time: datetime.datetime = None):
         self.end_time = end_time if end_time else datetime.datetime.now()

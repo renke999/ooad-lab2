@@ -34,7 +34,7 @@ class Singleton:
         return dst_list
 
     @staticmethod
-    def getInstance():
+    def get_instance():
         if Singleton.__instance__ is None:
             Singleton.__instance__ = Singleton()
             return Singleton.__instance__
@@ -45,7 +45,7 @@ class Singleton:
 if __name__ == "__main__":
 
     # 新建数据库property
-    instance = Singleton.getInstance()
+    instance = Singleton.get_instance()
 
     # instance.cursor.execute("create database property;")
     # instance.conn.commit()

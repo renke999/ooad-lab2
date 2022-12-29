@@ -11,7 +11,7 @@ class Reply:
         self.worker_id = kwargs['worker_id'] if 'worker_id' in kwargs else None
         self.reply_content = kwargs['reply_content'] if 'reply_content' in kwargs else None
 
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
     def commit_reply(self):
         sql = """insert reply(complaint_id, scheduler_id, worker_id, reply_content) 

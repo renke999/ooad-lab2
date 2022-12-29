@@ -11,7 +11,7 @@ class Schedule:
         self.repair_id = kwargs['repair_id'] if 'repair_id' in kwargs else None
         self.is_right = kwargs['is_right'] if 'is_right' in kwargs else True
 
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
     def commit_schedule(self):
         sql = """insert schedule(scheduler_id, worker_id, repair_id, is_right) 

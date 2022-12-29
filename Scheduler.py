@@ -12,24 +12,22 @@ class Scheduler:
     def __init__(self, **kwargs):
 
         self.scheduler_id = kwargs['scheduler_id'] if 'scheduler_id' in kwargs else None
-        self.instance = Singleton.getInstance()
+        self.instance = Singleton.get_instance()
 
-    def handle_schedule(self):
+    def handle_schedule_choose_repair(self):
         print("待调度报修列表：")
         repair_lst = self.instance.get_dict_data_select("""select * from repair where repair_state = '待调度';""")
         print("\n".join(['\t' + str(dct) for dct in repair_lst]) if len(repair_lst) else "\t空")
         repair_id = int(input("请根据'repair_id'选择任务，退出请输入'0'：\n>>>"))
-        while repair_id != 0:
+        if repair_id != 0:
             try:
                 repair = list(filter(lambda x: x['repair_id'] == repair_id, repair_lst))[0]
                 repair = Repair(**repair)
-                self.handle_schedule_worker(repair)
+                self.handle_schedule_choose_worker(repair)
             except IndexError:
-                print("输入'repair_id'错误，请重新输入：\n")
-                continue
-            repair_id = int(input("请根据'repair_id'选择任务，退出请输入'0'：\n>>>"))
+                print("输入'repair_id'错误，请重新发起报修调度请求：\n")
 
-    def handle_schedule_worker(self, repair: Repair):
+    def handle_schedule_choose_worker(self, repair: Repair):
         print("可调度维修工列表：")
         worker_lst = self.instance.get_dict_data_select("""select * from worker where is_free = true and fault_name = '%s';""" % repair.fault_name)
         print("\n".join(['\t' + str(dct) for dct in worker_lst]) if len(worker_lst) else "\t空")
@@ -37,34 +35,35 @@ class Scheduler:
         worker = list(filter(lambda x: x['worker_id'] == worker_id, worker_lst))
         if worker:
             worker = Worker(**worker[0])
-            schedule = Schedule(scheduler_id=self.scheduler_id, worker_id=worker_id, repair_id=repair.repair_id)
-            schedule_id = schedule.commit_schedule()
-            repair.switch_state(repair_state='调度中')
-            worker.busy_worker(schedule_id=schedule_id)
+            self.handle_schedule_backend(repair=repair, worker=worker)
         else:
             print("输入'worker_id'错误，已自动回退，请重新选择报修调度\n")
 
-    def handle_complaint(self):
+    def handle_schedule_backend(self, repair: Repair, worker: Worker):
+        schedule = Schedule(scheduler_id=self.scheduler_id, worker_id=worker.worker_id, repair_id=repair.repair_id)
+        schedule_id = schedule.commit_schedule()
+        repair.switch_state(repair_state='调度中')
+        worker.busy_worker(schedule_id=schedule_id)
+
+    def handle_complaint_frontend(self):
         print("待回复投诉列表：")
         reply_lst = self.instance.get_dict_data_select(
             """select * from reply where reply_content is null and scheduler_id = %d;""" % self.scheduler_id)
         print("\n".join(['\t' + str(dct) for dct in reply_lst]) if len(reply_lst) else "\t空")
         complaint_id = int(input("请根据'complaint_id'选择，退出请输入'0'：\n>>>"))
-        while complaint_id != 0:
+        if complaint_id != 0:
             try:
                 reply = list(filter(lambda x: x['complaint_id'] == complaint_id, reply_lst))[0]
                 reply = Reply(**reply)
                 reply_content = input("开始回复，请输入回复内容\n>>>")
                 reply.update_reply(reply_content=reply_content)
             except IndexError:
-                print("输入'complaint_id'错误，请重新输入：\n")
-                continue
-            complaint_id = int(input("请根据'complaint_id'选择任务，退出请输入'0'：\n>>>"))
+                print("输入'complaint_id'错误，请重新发起投诉处理请求：\n")
 
 
 if __name__ == '__main__':
 
-    singleton = Singleton.getInstance()
+    singleton = Singleton.get_instance()
     print("调度员列表：")
 
     scheduler_lst = singleton.get_dict_data_select("""select * from scheduler;""")
@@ -80,7 +79,7 @@ if __name__ == '__main__':
 
     scheduler = Scheduler(scheduler_id=scheduler['scheduler_id'])
 
-    scheduler_control_lst = ['scheduler.handle_schedule', 'scheduler.handle_complaint', ]
+    scheduler_control_lst = ['scheduler.handle_schedule_choose_repair', 'scheduler.handle_complaint_frontend', ]
 
     idx = int(input("处理报修请按'1'，处理投诉请按'2'，退出请按'3'：\n>>>"))
     while idx != 3:
