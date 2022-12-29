@@ -5,6 +5,24 @@ import datetime
 state_dct = {'待调度': 'TodoState', '调度中': 'DoingState', '已调度': 'DoneState'}
 
 
+def select_one_repair(sql):
+    print("已调度报修列表：")
+    instance = Singleton.getInstance()
+    repair_lst = instance.get_dict_data_select(sql)
+    print("\n".join(['\t' + str(dct) for dct in repair_lst]) if len(repair_lst) else "\t空")
+    repair_id = int(input("请根据'repair_id'选择报修，退出请输入'0'：\n>>>"))
+    repair = None
+    while repair_id != 0:
+        try:
+            repair = list(filter(lambda x: x['repair_id'] == repair_id, repair_lst))[0]
+            repair = Repair(**repair)
+        except IndexError:
+            repair_id = int(input("输入'repair_id'错误，请重新输入：\n>>>"))
+            continue
+        repair_id = int(input("请根据'repair_id'选择报修，退出请输入'0'：\n>>>"))
+    return repair
+
+
 class Repair:
 
     def __init__(self, **kwargs):

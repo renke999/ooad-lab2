@@ -1,8 +1,10 @@
 
 from Singleton import Singleton
-from Schedule import Schedule
+
 from Repair import Repair
+from Schedule import Schedule
 from Worker import Worker
+from Reply import Reply
 
 
 class Scheduler:
@@ -23,7 +25,7 @@ class Scheduler:
                 repair = Repair(**repair)
                 self.handle_schedule_worker(repair)
             except IndexError:
-                repair_id = int(input("输入'repair_id'错误，请重新输入：\n>>>"))
+                print("输入'repair_id'错误，请重新输入：\n")
                 continue
             repair_id = int(input("请根据'repair_id'选择任务，退出请输入'0'：\n>>>"))
 
@@ -42,8 +44,22 @@ class Scheduler:
         else:
             print("输入'worker_id'错误，已自动回退，请重新选择报修调度\n")
 
-    def handle_feedback(self):
-        pass
+    def handle_complaint(self):
+        print("待回复投诉列表：")
+        reply_lst = self.instance.get_dict_data_select(
+            """select * from reply where reply_content is null and scheduler_id = %d;""" % self.scheduler_id)
+        print("\n".join(['\t' + str(dct) for dct in reply_lst]) if len(reply_lst) else "\t空")
+        complaint_id = int(input("请根据'complaint_id'选择，退出请输入'0'：\n>>>"))
+        while complaint_id != 0:
+            try:
+                reply = list(filter(lambda x: x['complaint_id'] == complaint_id, reply_lst))[0]
+                reply = Reply(**reply)
+                reply_content = input("开始回复，请输入回复内容\n>>>")
+                reply.update_reply(reply_content=reply_content)
+            except IndexError:
+                print("输入'complaint_id'错误，请重新输入：\n")
+                continue
+            complaint_id = int(input("请根据'complaint_id'选择任务，退出请输入'0'：\n>>>"))
 
 
 if __name__ == '__main__':
@@ -64,12 +80,12 @@ if __name__ == '__main__':
 
     scheduler = Scheduler(scheduler_id=scheduler['scheduler_id'])
 
-    scheduler_control_lst = ['scheduler.handle_schedule', 'scheduler.handle_feedback', ]
+    scheduler_control_lst = ['scheduler.handle_schedule', 'scheduler.handle_complaint', ]
 
-    idx = int(input("处理报修请按'1'，处理反馈请按'2'，退出请按'3'：\n>>>"))
+    idx = int(input("处理报修请按'1'，处理投诉请按'2'，退出请按'3'：\n>>>"))
     while idx != 3:
         try:
             eval(scheduler_control_lst[idx - 1])()
         except (NameError, IndexError):
             print('请输入正确的指令编号！')
-        idx = int(input("处理报修请按'1'，处理反馈请按'2'，退出请按'3'：\n>>>"))
+        idx = int(input("处理报修请按'1'，处理投诉请按'2'，退出请按'3'：\n>>>"))

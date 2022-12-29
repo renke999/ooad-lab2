@@ -176,7 +176,7 @@ if __name__ == "__main__":
         complaint_id int auto_increment primary key,
         repair_id int,
         complaint_content varchar(20),
-        done bool,
+        is_done bool,
         foreign key (repair_id) references repair(repair_id)
     );
     """
@@ -188,9 +188,11 @@ if __name__ == "__main__":
     create table if not exists reply(
         reply_id int auto_increment primary key,
         complaint_id int,
+        scheduler_id int,
         worker_id int,
         reply_content varchar(20),
         foreign key (complaint_id) references complaint(complaint_id),
+        foreign key (scheduler_id) references scheduler(scheduler_id),
         foreign key (worker_id) references worker(worker_id)
     );
     """
