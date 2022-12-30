@@ -26,7 +26,7 @@ class Schedule:
         return self.schedule_id
 
     def wrong_schedule(self):
-        sql = """update schedule set is_right = false where schedule_id = %d;""" % self.scheduler_id
+        sql = """update schedule set is_right = false where schedule_id = %d;""" % self.schedule_id
         self.instance.cursor.execute(sql)
         self.instance.conn.commit()
         self.is_right = False

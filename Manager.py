@@ -28,7 +28,7 @@ class Manager:
 
     def handle_complaint_backend(self, complaint: Complaint):
         schedule_lst = self.instance.get_dict_data_select("""select * from schedule where is_right = true and repair_id = %d;""" % complaint.repair_id)
-        schedule = Schedule(**schedule_lst[0])
+        schedule = Schedule(**schedule_lst[-1])
         reply = Reply(complaint_id=complaint.complaint_id, scheduler_id=schedule.scheduler_id, worker_id=schedule.worker_id)
         reply.commit_reply()
 

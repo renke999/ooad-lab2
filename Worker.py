@@ -74,7 +74,8 @@ class Worker:
     def handle_complaint_frontend(self):
         print("待回复投诉列表：")
         reply_lst = self.instance.get_dict_data_select(
-            """select * from reply where reply_content is null and worker_id = %d;""" % self.worker_id)
+            """select * from reply join complaint on reply.complaint_id = complaint.complaint_id
+             where reply_content is null and worker_id = %d;""" % self.worker_id)
         print("\n".join(['\t' + str(dct) for dct in reply_lst]) if len(reply_lst) else "\t空")
         complaint_id = int(input("请根据'complaint_id'选择，退出请输入'0'：\n>>>"))
         if complaint_id != 0:
